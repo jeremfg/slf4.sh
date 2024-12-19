@@ -12,7 +12,7 @@ else
 fi
 
 # shellcheck disable=SC2034  # Unused variables left documentation purpose
-SLF4SH_VERSION="1.0.0"
+SLF4SH_VERSION="1.0.1"
 
 # LEVEL_ALL appears unused. Verify use (or export if used externally).
 # LEVEL_OFF appears unused. Verify use (or export if used externally).
@@ -129,13 +129,13 @@ sl_init() {
   if command -v git &>/dev/null; then
     local curDir
     local res
-    curDir="$(cd "${logDir}" && git rev-parse --show-toplevel &>/dev/null)"
+    curDir="$(cd "${logDir}" && git rev-parse --show-toplevel)"
     res=$?
     # Walk-up the tree to exit any potential git repository
     while [[ ${res} -eq 0 ]]; do
       # Check if parent is inside a git repository
       if cd "${curDir}/.." && git rev-parse --is-inside-work-tree &>/dev/null; then
-        curDir="$(cd "${curDir}/.." && git rev-parse --show-toplevel &>/dev/null)"
+        curDir="$(cd "${curDir}/.." && git rev-parse --show-toplevel)"
         curDir="$(realpath "${curDir}")"
       else
         logDir="${curDir}"

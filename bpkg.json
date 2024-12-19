@@ -1,6 +1,6 @@
 {
   "name": "slf4.sh",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Add logging to shell scripts",
   "install": "install -m 0644 src/slf4.sh ${PREFIX}/lib",
   "files": ["src/slf4.sh"],
