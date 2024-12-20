@@ -22,7 +22,7 @@ NOTE: bpkg itself can easily be installed by calling
 In the first case, the library is installed local to your project.
 You will need to `source deps/slf4.sh/src/slf4.sh`.
 In the second case, the library is installed globally.
-You will need to `source ~/.local/lib/slf4.sh`.
+You will need to `source ${PREFIX:-/usr/local}/lib/slf4.sh`.
 
 ## Features
 

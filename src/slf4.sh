@@ -8,7 +8,7 @@
 if [[ -z ${GUARD_SLF4SH_SH} ]]; then
   GUARD_SLF4SH_SH=1
 else
-  return
+  return 0
 fi
 
 # shellcheck disable=SC2034  # Unused variables left documentation purpose
@@ -119,16 +119,22 @@ log() {
 }
 
 sl_init() {
-  local start_date start_time start logDir
+  local start_date start_time start logDir curDir res
   start_date="$(date +%F)"
   start_time="$(date +%H%M%S)"
   start="${start_date}_${start_time}"
-  logDir="${SL_CWD}"
+
+  # Resolve to the absolute real path
+  logDir="${SL_SCRIPT}"
+  while [[ -L "${logDir}" ]]; do
+    curDir=$(cd -P "$(dirname "${logDir}")" >/dev/null 2>&1 && pwd)
+    logDir=$(readlink "${logDir}")
+    [[ ${logDir} != /* ]] && logDir=${curDir}/${logDir}
+  done
+  logDir=$(cd -P "$(dirname "${logDir}")" >/dev/null 2>&1 && pwd)
 
   # If git is supported, try to find parent repository root
   if command -v git &>/dev/null; then
-    local curDir
-    local res
     curDir="$(cd "${logDir}" && git rev-parse --show-toplevel)"
     res=$?
     # Walk-up the tree to exit any potential git repository
@@ -148,7 +154,8 @@ sl_init() {
 
   # Path Configuration
   declare -g SL_LOGFILE
-  SL_LOGFILE="${logDir}/.log/${SL_ME%.*}_${start}.log"
+  SL_LOGFILE="$(basename "${SL_SCRIPT}")"
+  SL_LOGFILE="${logDir}/.log/${SL_LOGFILE%.*}_${start}.log"
 
   # Setup logging
   mkdir -p "$(dirname "${SL_LOGFILE}")" # Create log directory
@@ -161,8 +168,8 @@ sl_init() {
 ###########################
 ###### Startup logic ######
 ###########################
+SL_SCRIPT="${0}"
 SL_CWD=$(pwd)
-SL_ME="$(basename "${BASH_SOURCE[0]}")"
 
 # Get root directory of the project
 # https://stackoverflow.com/a/246128
