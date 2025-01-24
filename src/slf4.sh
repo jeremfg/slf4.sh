@@ -48,94 +48,106 @@ logSetLevel() {
 
 logFatal() {
   if [[ "${LOG_LEVEL}" -le ${LEVEL_FATAL} ]]; then
-    log "FATAL " "$@"
+    log "FATAL" "$@"
   fi
   exit 1
 }
 
 logError() {
   if [[ "${LOG_LEVEL}" -le ${LEVEL_ERROR} ]]; then
-    log "ERROR " "$@"
+    log "ERROR" "$@"
   fi
 }
 
 logWarn() {
   if [[ "${LOG_LEVEL}" -le ${LEVEL_WARN} ]]; then
-    log "WARN  " "$@"
+    log " WARN" "$@"
   fi
 }
 
 logInfo() {
   if [[ "${LOG_LEVEL}" -le ${LEVEL_INFO} ]]; then
-    log "INFO  " "$@"
+    log " INFO" "$@"
   fi
 }
 
 logDebug() {
   if [[ "${LOG_LEVEL}" -le ${LEVEL_DEBUG} ]]; then
-    log "DEBUG " "$@"
+    log "DEBUG" "$@"
   fi
 }
 
 logTrace() {
   if [[ "${LOG_LEVEL}" -le ${LEVEL_TRACE} ]]; then
-    log "TRACE " "$@"
+    log "TRACE" "$@"
   fi
 }
 
 logTest() {
   if [[ "${LOG_LEVEL}" -le ${LEVEL_TEST} ]]; then
-    log "TEST  " "$@"
+    log " TEST" "$@"
   fi
 }
 
 log() {
-  local date=0
-  local time=0
-  local full=0
-  date=$(date +%F)
-  time=$(date +%H:%M:%S)
-  full="${date} ${time}"
-
-  local level="$1"
+  local level
+  level="${1}"
   shift
 
-  local out_line
+  local date time file line location prefix pid message
+
+  date=$(date +%F)
+  time=$(date +%H:%M:%S)
+  file="${BASH_SOURCE[2]}"
+  line="${BASH_LINENO[1]}"
+  pid="$$"
+
+  # Remove SLF4_ROOT from the file path
+  file=$(realpath "${file}")
+  file="${file#"${SLF4_ROOT}"/}"
+
+  location="${file}:${line}"
+
+  # Truncate location to the last 15 characters
+  location="${location: -15}"
+
+  prefix="${date} ${time} ${pid} ${level} ${location} - "
+
   if [[ -z "$*" ]]; then
-    local line
-    out_line="(message from pipe follows below)"
+    message="(message from pipe follows below)"
     while IFS= read -r line; do
-      out_line+="\n${line}"
+      message+="\n${line}"
     done
   else
-    out_line="$*"
+    message="$*"
   fi
 
   if [[ "${LOG_CONSOLE}" == 1 ]]; then
-    echo -e "${full} ${level}${out_line}"
+    echo -e "${prefix}${message}"
   else
-    echo -e "${full} ${level}${out_line}" >>"${SL_LOGFILE}"
+    echo -e "${prefix}${message}" >>"${SL_LOGFILE}"
   fi
 }
 
 sl_init() {
-  local start_date start_time start logDir curDir res
+  local start_date start_time start curDir res
   start_date="$(date +%F)"
   start_time="$(date +%H%M%S)"
   start="${start_date}_${start_time}"
 
+  declare -g SLF4_ROOT
   # Resolve to the absolute real path
-  logDir="${SL_SCRIPT}"
-  while [[ -L "${logDir}" ]]; do
-    curDir=$(cd -P "$(dirname "${logDir}")" >/dev/null 2>&1 && pwd)
-    logDir=$(readlink "${logDir}")
-    [[ ${logDir} != /* ]] && logDir=${curDir}/${logDir}
+  SLF4_ROOT="${SL_SCRIPT}"
+  while [[ -L "${SLF4_ROOT}" ]]; do
+    curDir=$(cd -P "$(dirname "${SLF4_ROOT}")" >/dev/null 2>&1 && pwd)
+    SLF4_ROOT=$(readlink "${SLF4_ROOT}")
+    [[ ${SLF4_ROOT} != /* ]] && SLF4_ROOT=${curDir}/${SLF4_ROOT}
   done
-  logDir=$(cd -P "$(dirname "${logDir}")" >/dev/null 2>&1 && pwd)
+  SLF4_ROOT=$(cd -P "$(dirname "${SLF4_ROOT}")" >/dev/null 2>&1 && pwd)
 
   # If git is supported, try to find parent repository root
   if command -v git &>/dev/null; then
-    curDir="$(cd "${logDir}" && git rev-parse --show-toplevel)"
+    curDir="$(cd "${SLF4_ROOT}" && git rev-parse --show-toplevel)"
     res=$?
     # Walk-up the tree to exit any potential git repository
     while [[ ${res} -eq 0 ]]; do
@@ -144,7 +156,7 @@ sl_init() {
         curDir="$(cd "${curDir}/.." && git rev-parse --show-toplevel)"
         curDir="$(realpath "${curDir}")"
       else
-        logDir="${curDir}"
+        SLF4_ROOT="${curDir}"
         break # We've escaped outside of the git repo
       fi
     done
@@ -155,7 +167,7 @@ sl_init() {
   # Path Configuration
   declare -g SL_LOGFILE
   SL_LOGFILE="$(basename "${SL_SCRIPT}")"
-  SL_LOGFILE="${logDir}/.log/${SL_LOGFILE%.*}_${start}.log"
+  SL_LOGFILE="${SLF4_ROOT}/.log/${SL_LOGFILE%.*}_${start}.log"
 
   # Setup logging
   mkdir -p "$(dirname "${SL_LOGFILE}")" # Create log directory
