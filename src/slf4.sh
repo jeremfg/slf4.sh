@@ -94,39 +94,98 @@ log() {
   level="${1}"
   shift
 
-  local date time file line location prefix pid message
+  local date time file line location prefix pid message caller_info resolved
 
   date=$(date +%F)
   time=$(date +%H:%M:%S)
-  file="${BASH_SOURCE[2]}"
-  line="${BASH_LINENO[1]}"
   pid="$$"
 
-  # Remove SLF4_ROOT from the file path
-  file=$(realpath "${file}")
-  file="${file#"${SLF4_ROOT}"/}"
+  # Get caller file:line using helper (capture stdout)
+  caller_info=$(__slf4_get_caller 2>/dev/null || true)
+  if [[ -n "${caller_info}" && "${caller_info}" == *:* ]]; then
+    file=${caller_info%%:*}
+    line=${caller_info##*:}
+  else
+    file="unknown"
+    line=0
+  fi
+
+  # Resolve and shorten file path once
+  if resolved=$(realpath "${file}" 2>/dev/null); then
+    if [[ -n "${SLF4_ROOT}" && "${resolved}" == "${SLF4_ROOT}"* ]]; then
+      file=${resolved#"${SLF4_ROOT}"/}
+    else
+      file=${resolved}
+    fi
+  fi
 
   location="${file}:${line}"
-
-  # Truncate location to the last 15 characters
-  location="${location: -15}"
+  if [[ ${#location} -gt 15 ]]; then
+    location="${location:$((${#location}-15))}"
+  fi
 
   prefix="${date} ${time} ${pid} ${level} ${location} - "
 
-  if [[ -z "$*" ]]; then
-    message="(message from pipe follows below)"
-    while IFS= read -r line; do
-      message+="\n${line}"
-    done
+  if [[ $# -eq 0 ]]; then
+    # When piped, always emit explanatory first line, then stream piped content
+    if [[ "${LOG_CONSOLE}" == 1 ]]; then
+      printf '%b\n' "${prefix}(message from pipe follows below)"
+      while IFS= read -r line; do
+        printf '%s\n' "${line}"
+      done
+    else
+      printf '%b\n' "${prefix}(message from pipe follows below)" >>"${SL_LOGFILE}"
+      while IFS= read -r line; do
+        printf '%s\n' "${line}" >>"${SL_LOGFILE}"
+      done
+    fi
   else
-    message="$*"
+    # Single-line message from args
+    if [[ "${LOG_CONSOLE}" == 1 ]]; then
+      printf '%b\n' "${prefix}$*"
+    else
+      printf '%b\n' "${prefix}$*" >>"${SL_LOGFILE}"
+    fi
+  fi
+}
+
+# Helper: return caller as file:line for the first non-logger frame
+__slf4_get_caller() {
+  local slf4_file idx c c_line c_file c_real src_index src real_src last_index
+  slf4_file="${SLF4_FILE:-}"
+  if [[ -z "${slf4_file}" ]]; then
+    slf4_file=$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")
   fi
 
-  if [[ "${LOG_CONSOLE}" == 1 ]]; then
-    echo -e "${prefix}${message}"
-  else
-    echo -e "${prefix}${message}" >>"${SL_LOGFILE}"
-  fi
+  idx=1
+  while c=$(caller ${idx} 2>/dev/null); do
+    c_line=${c%% *}
+    c_file=${c##* }
+    if [[ -n "${c_file}" ]]; then
+      c_real=$(realpath "${c_file}" 2>/dev/null || echo "${c_file}")
+      if [[ "${c_real}" != "${slf4_file}" ]]; then
+        printf '%s:%s' "${c_file}" "${c_line}"
+        return 0
+      fi
+    fi
+    idx=$((idx + 1))
+  done
+
+  for src_index in "${!BASH_SOURCE[@]}"; do
+    src=${BASH_SOURCE[src_index]}
+    real_src=$(realpath "${src}" 2>/dev/null || echo "${src}")
+    if [[ "${real_src}" != "${slf4_file}" ]]; then
+      if [[ ${src_index} -gt 0 ]]; then
+        printf '%s:%s' "${src}" "${BASH_LINENO[$((src_index-1))]:-0}"
+      else
+        printf '%s:%s' "${src}" "0"
+      fi
+      return 0
+    fi
+  done
+
+  last_index=$((${#BASH_SOURCE[@]} - 1))
+  printf '%s:%s' "${BASH_SOURCE[last_index]}" "${BASH_LINENO[$((last_index-1))]:-0}"
 }
 
 sl_init() {
@@ -144,6 +203,10 @@ sl_init() {
     [[ ${SLF4_ROOT} != /* ]] && SLF4_ROOT=${curDir}/${SLF4_ROOT}
   done
   SLF4_ROOT=$(cd -P "$(dirname "${SLF4_ROOT}")" >/dev/null 2>&1 && pwd)
+
+  # Cache absolute path to the logger file (used by caller lookup)
+  declare -g SLF4_FILE
+  SLF4_FILE=$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")
 
   # If git is supported, try to find parent repository root
   if command -v git &>/dev/null; then
