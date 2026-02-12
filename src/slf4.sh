@@ -109,7 +109,9 @@ log() {
   location="${file}:${line}"
 
   # Truncate location to the last 15 characters
-  location="${location: -15}"
+  if [[ ${#location} -gt 15 ]]; then
+    location="${location:$((${#location}-15))}"
+  fi
 
   prefix="${date} ${time} ${pid} ${level} ${location} - "
 
