@@ -5,7 +5,7 @@
 # Inspired From: https://serverfault.com/a/103569
 #
 
-if [[ -z ${GUARD_SLF4SH_SH} ]]; then
+if [[ -z ${GUARD_SLF4SH_SH+x} ]]; then
   GUARD_SLF4SH_SH=1
 else
   return 0
