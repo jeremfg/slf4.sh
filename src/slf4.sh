@@ -30,12 +30,12 @@ LEVEL_FATAL=7 # Unrecoverable error. Program is exiting immediately for safety a
 LEVEL_OFF=8 # Turns of all logs
 
 # If no level is configured, start at INFO
-if [[ -z "${LOG_LEVEL}" ]]; then
+if [[ -z "${LOG_LEVEL+x}" ]]; then
   LOG_LEVEL=${LEVEL_INFO}
 fi
 
 # By default do not print logs on the console but only in the log file
-if [[ -z "${LOG_CONSOLE}" ]]; then
+if [[ -z "${LOG_CONSOLE+x}" ]]; then
   LOG_CONSOLE=0
 fi
 
