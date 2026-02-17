@@ -5,7 +5,7 @@
 # Inspired From: https://serverfault.com/a/103569
 #
 
-if [[ -z ${GUARD_SLF4SH_SH} ]]; then
+if [[ -z ${GUARD_SLF4SH_SH+x} ]]; then
   GUARD_SLF4SH_SH=1
 else
   return 0
@@ -30,12 +30,12 @@ LEVEL_FATAL=7 # Unrecoverable error. Program is exiting immediately for safety a
 LEVEL_OFF=8 # Turns of all logs
 
 # If no level is configured, start at INFO
-if [[ -z "${LOG_LEVEL}" ]]; then
+if [[ -z "${LOG_LEVEL+x}" ]]; then
   LOG_LEVEL=${LEVEL_INFO}
 fi
 
 # By default do not print logs on the console but only in the log file
-if [[ -z "${LOG_CONSOLE}" ]]; then
+if [[ -z "${LOG_CONSOLE+x}" ]]; then
   LOG_CONSOLE=0
 fi
 
@@ -109,7 +109,9 @@ log() {
   location="${file}:${line}"
 
   # Truncate location to the last 15 characters
-  location="${location: -15}"
+  if [[ ${#location} -gt 15 ]]; then
+    location="${location:$((${#location}-15))}"
+  fi
 
   prefix="${date} ${time} ${pid} ${level} ${location} - "
 
