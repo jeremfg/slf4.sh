@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
+# SPDX-License-Identifier: MIT
+#
 # Simple micro-benchmark for src/slf4.sh log() function
 # Usage: tool/bench_logging.sh [ITERATIONS]
+set -euo pipefail
 
 ITER=${1:-1000}
 
@@ -48,7 +49,6 @@ LONGMSG=$(printf 'x%.0s' {1..200})
 run_loop "direct_long(200)" logInfo "$LONGMSG"
 
 # 3) piped input version (each iteration spawns a pipeline)
-# Run piped tests in the current shell so logInfo function is available
 run_pipe_test() {
   local name="$1" msg="$2" i start end elapsed avg_ns avg_ms
   start=$(time_ns)
