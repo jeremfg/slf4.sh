@@ -12,7 +12,7 @@ else
 fi
 
 # shellcheck disable=SC2034  # Unused variables left documentation purpose
-SLF4SH_VERSION="1.2.0"
+SLF4SH_VERSION="1.2.1"
 
 # LEVEL_ALL appears unused. Verify use (or export if used externally).
 # LEVEL_OFF appears unused. Verify use (or export if used externally).
