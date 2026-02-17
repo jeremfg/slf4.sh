@@ -5,8 +5,15 @@ set -euo pipefail
 # Usage: tool/bench_logging.sh [ITERATIONS]
 
 ITER=${1:-1000}
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Validate ITER is a positive integer to avoid division-by-zero and arithmetic errors
+if ! [[ "$ITER" =~ ^[1-9][0-9]*$ ]]; then
+  printf 'Error: ITER must be a positive integer (got: %s)\n' "$ITER" >&2
+  printf 'Usage: %s [ITERATIONS]\n' "$0" >&2
+  exit 1
+fi
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Source logger (will call sl_init when sourced)
 # Temporarily disable nounset to avoid errors from the sourced file checking
 set +u
